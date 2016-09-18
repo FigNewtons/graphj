@@ -1,3 +1,5 @@
+package com.fignewtons.core;
+
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
@@ -14,10 +16,10 @@ import java.util.*;
 public class AdjacencyList<T> implements Graph<T> {
 
     private Map<T, Set<T>> graph = new HashMap<>();
+    private ChangeLog<T> changeLog = new ChangeLog<>();
 
-    public AdjacencyList() {
 
-    }
+    public AdjacencyList() {}
 
     public AdjacencyList(List<Pair<T, T>> edges) {
         addEdges(edges);
@@ -29,32 +31,37 @@ public class AdjacencyList<T> implements Graph<T> {
 
     @Override
     public void addVertex(T vertex) {
-        if (!graph.containsKey(vertex)) {
+        if (!isVertex(vertex)) {
             graph.put(vertex, new HashSet<T>());
+            changeLog.addVertex(vertex);
         }
     }
 
     @Override
     public void addEdge(T sourceVertex, T destVertex) {
-        if (!isVertex(sourceVertex)) {
-            graph.put(sourceVertex, new HashSet<T>());
-        }
+        addVertex(sourceVertex);
         graph.get(sourceVertex).add(destVertex);
+        changeLog.addEdge(Pair.of(sourceVertex, destVertex));
     }
 
     @Override
     public void deleteVertex(T vertex) {
         graph.remove(vertex);
+        changeLog.deleteVertex(vertex);
 
-        for (Set<T> vertexNeighbors : graph.values()) {
-            vertexNeighbors.remove(vertex);
+        for (T otherVertex : graph.keySet()) {
+            deleteEdge(otherVertex, vertex);
         }
     }
 
     @Override
     public void deleteEdge(T sourceVertex, T destVertex) {
         if (isVertex(sourceVertex)) {
-            graph.get(sourceVertex).remove(destVertex);
+            Set<T> neighbors = graph.get(sourceVertex);
+            if (neighbors.contains(destVertex)) {
+                neighbors.remove(destVertex);
+                changeLog.deleteEdge(Pair.of(sourceVertex, destVertex));
+            }
         }
     }
 
@@ -153,6 +160,16 @@ public class AdjacencyList<T> implements Graph<T> {
         clonedGraph.addVertices(getVertices());
         clonedGraph.addEdges(getEdges());
         return clonedGraph;
+    }
+
+    @Override
+    public Boolean hasChanged() {
+        return changeLog.hasChanged();
+    }
+
+    @Override
+    public void save() {
+        changeLog.flush();
     }
 
 }

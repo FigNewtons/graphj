@@ -1,3 +1,5 @@
+package main.java.com.fignewtons.core;
+
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Arrays;

@@ -1,3 +1,5 @@
+package com.fignewtons.core;
+
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Collection;
@@ -107,4 +109,8 @@ public interface Graph<T> {
     List<Pair<T, T>> getEdges();
 
     Graph<T> clone();
+
+    Boolean hasChanged();
+
+    void save();
 }
