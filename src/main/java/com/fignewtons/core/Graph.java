@@ -110,7 +110,8 @@ public interface Graph<T> {
 
     Graph<T> clone();
 
-    Boolean hasChanged();
+    Boolean hasChangedSince(Integer id);
 
-    void save();
+    Integer getChangeId();
+
 }

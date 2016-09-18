@@ -2,9 +2,9 @@ package com.fignewtons.core;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.IntStream;
 
 /**
  *  Created by dgruszcz on 9/18/16.
@@ -15,54 +15,100 @@ import java.util.stream.IntStream;
  */
 public class ChangeLog<T> {
 
-    private Map<Pair<T, T>, Integer> log;
+    private static final Integer LOG_SIZE = 1000;
+
+    private ArrayList<Pair<Pair<T, T>, Integer>> log;
+    private Integer logId = 0;
+
 
     public ChangeLog() {
-        log = new HashMap<>();
+        reset();
     }
 
-    private void update(Pair<T, T> entry, Integer value) {
-        log.put(entry, value);
+    private void reset() {
+        log = new ArrayList<>(LOG_SIZE);
     }
 
-    private void addEntryIfNotPresent(Pair<T, T> entry) {
-        if (!log.containsKey(entry)) {
-            update(entry, 0);
-        }
+    private void append(Pair<T, T> entry, Integer value) {
+        Integer index = logId % LOG_SIZE;
+
+        if (logId >= LOG_SIZE && index == 0) reset();
+
+        log.add(index, Pair.of(entry, value));
+        logId++;
     }
 
     public void addVertex(T vertex) {
         Pair<T, T> entry = Pair.of(vertex, null);
-        addEntryIfNotPresent(entry);
-        update(entry, log.get(entry) + 1);
+        append(entry, 1);
     }
 
     public void deleteVertex(T vertex) {
         Pair<T, T> entry = Pair.of(vertex, null);
-        addEntryIfNotPresent(entry);
-        update(entry, log.get(entry) - 1);
+        append(entry, -1);
     }
 
     public void addEdge(Pair<T, T> edge) {
-        addEntryIfNotPresent(edge);
-        update(edge, log.get(edge) + 1);
+        append(edge, 1);
     }
 
     public void deleteEdge(Pair<T, T> edge) {
-        addEntryIfNotPresent(edge);
-        update(edge, log.get(edge) - 1);
+        append(edge, -1);
     }
 
-    public void flush() {
-        log.clear();
+    private Map<Pair<T, T>, Integer> getAggregateLog(Integer logId) {
+
+        Integer index = logId % LOG_SIZE;
+
+        Map<Pair<T, T>, Integer> aggregateLog = new HashMap<>();
+
+        for (int i = index; i < log.size(); i++) {
+
+            Pair<T, T> entry = log.get(i).getLeft();
+            Integer currentValue = log.get(i).getRight();
+
+            if (aggregateLog.containsKey(entry)) {
+
+                Integer aggregateValue = aggregateLog.get(entry);
+
+                /**
+                 *   Agg value  | Current value |   Result
+                 *   -----------+---------------+-----------
+                 *      1       |       1       |    1
+                 *      0       |       1       |    1
+                 *      -1      |       1       |    0
+                 *      1       |       -1      |    0
+                 *      0       |       -1      |    -1
+                 *      -1      |       -1      |    -1
+                 */
+                if (aggregateValue != currentValue) {
+                    aggregateLog.put(entry, aggregateValue + currentValue);
+                }
+
+            } else {
+                aggregateLog.put(entry, currentValue);
+            }
+        }
+        return aggregateLog;
     }
 
-    public Boolean hasChanged() {
-        return log.values().stream().allMatch(value -> value != 0);
+    public Integer getLogId() {
+        return logId;
     }
 
-    public Integer netChange() {
-        return log.values().stream().mapToInt(Integer::intValue).sum();
+    public Integer getLogSize() {
+        return log.size();
+    }
+
+    public Boolean hasChangedSince(Integer logId) {
+        Integer nextResetId = ((logId / LOG_SIZE) + 1) * LOG_SIZE;
+        if (this.logId > nextResetId) return true;
+
+        return getAggregateLog(logId).values().stream().allMatch(value -> value != 0);
+    }
+
+    public Integer netChangeSince(Integer logId) {
+        return getAggregateLog(logId).values().stream().mapToInt(Integer::intValue).sum();
     }
 
 }

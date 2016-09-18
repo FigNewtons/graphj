@@ -163,13 +163,13 @@ public class AdjacencyList<T> implements Graph<T> {
     }
 
     @Override
-    public Boolean hasChanged() {
-        return changeLog.hasChanged();
+    public Boolean hasChangedSince(Integer id) {
+        return changeLog.hasChangedSince(id);
     }
 
     @Override
-    public void save() {
-        changeLog.flush();
+    public Integer getChangeId() {
+        return changeLog.getLogId();
     }
 
 }
